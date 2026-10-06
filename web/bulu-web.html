@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2bulu 深圳约伴</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a7f4e;--green-d:#14663e;--bg:#f4f6f4;--card:#fff;--txt:#222;--mut:#888;--line:#e8ece8}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:10;background:var(--green);color:#fff;padding:12px 16px calc(10px + env(safe-area-inset-top));padding-top:calc(12px + env(safe-area-inset-top))}
+header h1{font-size:18px;font-weight:700}
+header .stats{font-size:12px;opacity:.9;margin-top:2px}
+.toolbar{position:sticky;top:57px;z-index:9;background:var(--card);border-bottom:1px solid var(--line);padding:10px 12px}
+.searchrow{display:flex;gap:8px}
+.searchrow input[type=text]{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;outline:none}
+.searchrow input[type=text]:focus{border-color:var(--green)}
+.searchrow button{background:var(--green);color:#fff;border:0;border-radius:8px;padding:0 18px;font-size:15px;font-weight:600}
+.daterow{display:flex;gap:8px;margin-top:8px;align-items:center;font-size:13px;color:var(--mut)}
+.daterow input{border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:14px;width:130px}
+.tagrow{display:flex;gap:8px;margin-top:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.tag{flex:none;border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 14px;font-size:13px;color:#555}
+.tag.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+#list{padding:12px;display:flex;flex-direction:column;gap:10px;max-width:720px;margin:0 auto}
+.card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer}
+.card:active{transform:scale(.99)}
+.card .date{font-size:12px;color:var(--green);font-weight:700;margin-bottom:4px}
+.card .title{font-size:16px;font-weight:600;margin-bottom:6px}
+.card .meta{font-size:13px;color:var(--mut);display:flex;flex-wrap:wrap;gap:4px 12px}
+.card .meta b{color:#555;font-weight:600}
+#more{display:block;width:calc(100% - 24px);max-width:696px;margin:4px auto 24px;padding:12px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:15px;color:var(--green);font-weight:600}
+#empty{text-align:center;color:var(--mut);padding:40px 0;font-size:14px}
+.loading{text-align:center;color:var(--mut);padding:20px;font-size:14px}
+/* detail */
+#detail{position:fixed;inset:0;z-index:20;background:#fff;display:none;flex-direction:column}
+#detail.show{display:flex}
+#detail .dhead{background:var(--green);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px}
+#detail .dhead button{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:8px;padding:6px 12px;font-size:14px}
+#detail .dbody{flex:1;overflow-y:auto;padding:16px;max-width:720px;width:100%;margin:0 auto}
+#detail h2{font-size:19px;margin-bottom:8px}
+#detail .dmeta{font-size:13px;color:var(--mut);margin-bottom:12px;display:flex;flex-wrap:wrap;gap:4px 14px}
+#detail .dmeta b{color:#444}
+#detail .dtext{white-space:pre-wrap;font-size:15px;line-height:1.7;background:#fafbfa;border:1px solid var(--line);border-radius:10px;padding:14px}
+#detail .dlink{display:block;text-align:center;margin:16px 0 30px;background:var(--green);color:#fff;border-radius:10px;padding:12px;font-size:15px;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>🥾 2bulu 深圳约伴</h1>
+  <div class="stats" id="stats">加载中…</div>
+</header>
+<div class="toolbar">
+  <div class="searchrow">
+    <input type="text" id="q" placeholder="搜标题 / 领队 / 标签…" enterkeyhint="search">
+    <button id="go">搜</button>
+  </div>
+  <div class="daterow">
+    出发 <input type="date" id="from"> 至 <input type="date" id="to">
+  </div>
+  <div class="tagrow" id="tags"></div>
+</div>
+<div id="list"></div>
+<div id="empty" style="display:none">没有找到符合条件的活动</div>
+<button id="more" style="display:none">加载更多</button>
+<div class="loading" id="loading" style="display:none">加载中…</div>
+
+<div id="detail">
+  <div class="dhead"><button id="back">‹ 返回</button><span style="font-weight:700">活动详情</span></div>
+  <div class="dbody" id="dbody"></div>
+</div>
+
+<script>
+const API='https://2bulu-api.168939.xyz';
+const TAGS=['全部','徒步','骑行','露营','溯溪','自驾','跑步','亲子','桨板','游泳'];
+let state={q:'',from:'',to:'',tag:'',offset:0,total:0,loading:false};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function plusDays(n){const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+async function loadMeta(){
+  try{
+    const r=await fetch(API+'/api/meta');const m=await r.json();
+    $('stats').textContent='共 '+m.count+' 条 · 待出发 '+m.upcoming_count+' 条 · 更新 '+(m.generated_at||'').slice(0,16);
+  }catch(e){$('stats').textContent='数据加载失败';}
+}
+
+function fmtDate(s){return s||'';}
+function cardHTML(a){
+  const d=a.date_start===a.date_end?a.date_start:(a.date_start+' ~ '+a.date_end);
+  return '<div class="card" data-id="'+a.id+'">'
+    +'<div class="date">📅 '+esc(d)+(a.days>1?' · '+a.days+'天':'')+'</div>'
+    +'<div class="title">'+esc(a.title)+'</div>'
+    +'<div class="meta"><span>领队 <b>'+esc(a.leader||'-')+'</b></span>'
+    +'<span>'+esc(a.cost_type||'')+'</span>'
+    +'<span>已报名 <b>'+(a.signup_count||0)+'</b></span>'
+    +(a.tags?'<span>'+esc(a.tags.split(' ').slice(0,3).join(' · '))+'</span>':'')
+    +'</div></div>';
+}
+
+async function loadActivities(reset){
+  if(state.loading)return;
+  if(reset){state.offset=0;$('list').innerHTML='';$('empty').style.display='none';}
+  state.loading=true;$('loading').style.display='block';$('more').style.display='none';
+  const p=new URLSearchParams({from:state.from||'0000-00-00',to:state.to||'9999-99-99',limit:'30',offset:String(state.offset)});
+  const kw=[state.q,state.tag].filter(Boolean).join(' ');
+  if(kw)p.set('q',kw);
+  try{
+    const r=await fetch(API+'/api/activities?'+p.toString());
+    const d=await r.json();
+    state.total=d.total;
+    (d.activities||[]).forEach(a=>{$('list').insertAdjacentHTML('beforeend',cardHTML(a));});
+    state.offset+= (d.activities||[]).length;
+    if(state.total===0)$('empty').style.display='block';
+    if(state.offset<state.total)$('more').style.display='block';
+  }catch(e){$('empty').textContent='加载失败，请检查网络';$('empty').style.display='block';}
+  state.loading=false;$('loading').style.display='none';
+}
+
+function applyFilters(){
+  state.q=$('q').value.trim();state.from=$('from').value;state.to=$('to').value;
+  loadActivities(true);
+}
+
+async function openDetail(id){
+  const dv=$('detail'),db=$('dbody');
+  dv.classList.add('show');db.innerHTML='<div class="loading">加载中…</div>';document.body.style.overflow='hidden';
+  try{
+    const r=await fetch(API+'/api/activity/'+id);const a=await r.json();
+    if(a.error){db.innerHTML='<div class="loading">活动不存在</div>';return;}
+    const d=a.date_start===a.date_end?a.date_start:(a.date_start+' ~ '+a.date_end);
+    db.innerHTML='<h2>'+esc(a.title)+'</h2>'
+      +'<div class="dmeta"><span>📅 '+esc(d)+(a.days>1?'（'+a.days+'天）':'')+'</span>'
+      +'<span>领队 <b>'+esc(a.leader||'-')+'</b></span>'
+      +'<span>'+esc(a.cost_type||'')+'</span>'
+      +'<span>已报名 <b>'+(a.signup_count||0)+'</b> 人</span>'
+      +(a.tags?'<span>标签 '+esc(a.tags)+'</span>':'')+'</div>'
+      +(a.detail_text?'<div class="dtext">'+esc(a.detail_text)+'</div>':'<div class="loading">暂无详情正文</div>')
+      +'<a class="dlink" href="'+esc(a.detail_url)+'" target="_blank" rel="noopener">去 2bulu 报名 ›</a>';
+    db.scrollTop=0;
+  }catch(e){db.innerHTML='<div class="loading">加载失败</div>';}
+}
+$('back').onclick=()=>{$('detail').classList.remove('show');document.body.style.overflow='';};
+$('list').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openDetail(c.dataset.id);});
+$('go').onclick=applyFilters;
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter')applyFilters();});
+$('from').addEventListener('change',applyFilters);
+$('to').addEventListener('change',applyFilters);
+$('more').onclick=()=>loadActivities(false);
+
+const tagBox=$('tags');
+TAGS.forEach(t=>{
+  const s=document.createElement('span');s.className='tag'+(t==='全部'?' on':'');s.textContent=t;
+  s.onclick=()=>{tagBox.querySelectorAll('.tag').forEach(x=>x.classList.remove('on'));s.classList.add('on');
+    state.tag=(t==='全部'?'':t);loadActivities(true);};
+  tagBox.appendChild(s);
+});
+
+$('from').value=todayStr();
+$('to').value=plusDays(7);
+loadMeta();applyFilters();
+</script>
+</body>
+</html>
