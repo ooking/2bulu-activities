@@ -11,6 +11,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans G
 header{position:sticky;top:0;z-index:10;background:var(--green);color:#fff;padding:12px 16px calc(10px + env(safe-area-inset-top));padding-top:calc(12px + env(safe-area-inset-top))}
 header h1{font-size:18px;font-weight:700}
 header .stats{font-size:12px;opacity:.9;margin-top:2px}
+header .statslink{float:right;font-size:13px;color:#fff;text-decoration:none;background:rgba(255,255,255,.2);border-radius:14px;padding:3px 12px}
 .toolbar{position:sticky;top:57px;z-index:9;background:var(--card);border-bottom:1px solid var(--line);padding:10px 12px}
 .searchrow{display:flex;gap:8px}
 .searchrow input[type=text]{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;outline:none}
@@ -46,6 +47,7 @@ header .stats{font-size:12px;opacity:.9;margin-top:2px}
 </head>
 <body>
 <header>
+  <a class="statslink" href="/stats">📊 统计</a>
   <h1>🥾 2bulu 深圳约伴</h1>
   <div class="stats" id="stats">加载中…</div>
 </header>
