@@ -81,12 +81,18 @@ def ensure_domain(hostname, service):
 
 API_WORKER_JS = os.path.join(HERE, "workers", "bulu-worker.js")
 WEB_HTML = os.path.join(HERE, "web", "bulu-web.html")
+STATS_HTML = os.path.join(HERE, "web", "stats.html")
+STATS_JSON = os.path.join(HERE, "web", "stats-data.json")
 
 WEB_WRAPPER = """const HTML = %s;
+const STATS_HTML = %s;
+const STATS_JSON = %s;
 export default {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/health") return new Response("ok");
+    if (url.pathname === "/stats") return new Response(STATS_HTML, {headers: {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300"}});
+    if (url.pathname === "/stats-data.json") return new Response(STATS_JSON, {headers: {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=3600"}});
     return new Response(HTML, {headers: {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300"}});
   }
 };
@@ -103,7 +109,13 @@ def main():
                   [{"type": "d1", "name": "BULU_DB", "id": D1_DB_ID}])
     with open(WEB_HTML, encoding="utf-8") as f:
         html = f.read()
-    deploy_worker("bulu-web", WEB_WRAPPER % json.dumps(html))
+    with open(STATS_HTML, encoding="utf-8") as f:
+        stats_html = f.read()
+    with open(STATS_JSON, encoding="utf-8") as f:
+        stats_json = f.read()
+    deploy_worker("bulu-web",
+                  WEB_WRAPPER % (json.dumps(html), json.dumps(stats_html),
+                                 json.dumps(stats_json)))
     if "--domains" in sys.argv:
         ensure_domain("2bulu-api.168939.xyz", "bulu-api")
         ensure_domain("2bulu.168939.xyz", "bulu-web")
