@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>数据统计 · 2bulu 深圳约伴</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#1a7f4e;--bg:#f4f6f4;--card:#fff;--txt:#222;--mut:#888;--line:#e8ece8}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.6}
+header{position:sticky;top:0;z-index:10;background:var(--green);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
+header h1{font-size:18px}
+header .sub{font-size:12px;opacity:.9;margin-top:2px}
+header a{color:#fff}
+.wrap{max-width:720px;margin:0 auto;padding:12px 12px 40px}
+.sec{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.sec h2{font-size:16px;margin-bottom:4px}
+.sec .desc{font-size:12px;color:var(--mut);margin-bottom:12px}
+.mpills{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.mpill{flex:none;border:1px solid var(--line);border-radius:16px;padding:5px 13px;font-size:13px;color:#555;background:#fff}
+.mpill.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+.bar{margin:7px 0}
+.bar .lbl{font-size:13px;display:flex;justify-content:space-between;margin-bottom:3px}
+.bar .lbl b{font-weight:600}
+.bar .track{height:10px;background:#eef2ee;border-radius:5px;overflow:hidden}
+.bar .fill{height:100%;background:var(--green);border-radius:5px;min-width:2px}
+.trend{display:flex;align-items:flex-end;gap:3px;height:120px;padding-top:10px}
+.trend .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.trend .v{width:100%;max-width:22px;background:var(--green);border-radius:3px 3px 0 0;opacity:.85}
+.trend .t{font-size:9px;color:var(--mut);margin-top:4px;white-space:nowrap}
+.rank{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rank:last-child{border:0}
+.rank .no{width:22px;height:22px;border-radius:50%;background:#eef2ee;color:#666;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.rank .no.top{background:var(--green);color:#fff;font-weight:700}
+.rank .nm{flex:1}
+.rank .ct{color:var(--mut);font-size:12px}
+.rank .n{font-weight:700;color:var(--green)}
+.tagchip{display:inline-block;background:#e8f4ec;color:var(--green);border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px}
+.seasons{font-size:11px;color:var(--mut)}
+.back{display:inline-block;margin:12px;color:var(--green);font-size:14px;text-decoration:none}
+.foot{font-size:12px;color:var(--mut);text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 数据统计</h1>
+  <div class="sub" id="meta">加载中… · <a href="/">‹ 回查询</a></div>
+</header>
+<div class="wrap">
+  <div class="sec">
+    <h2>🗓 每月玩什么</h2>
+    <div class="desc">按出发月份统计各类型活动数量，看看每个月适合玩什么</div>
+    <div class="mpills" id="mpills"></div>
+    <div id="monthcat"></div>
+  </div>
+  <div class="sec">
+    <h2>📈 活动量趋势</h2>
+    <div class="desc">2025 年 1 月以来每月出发的活动数</div>
+    <div class="trend" id="trend"></div>
+    <div class="desc" id="yoy" style="margin:10px 0 0"></div>
+  </div>
+  <div class="sec">
+    <h2>📍 热门目的地 TOP 20</h2>
+    <div class="desc">从标题中提取，季节为该目的地各季节活动占比最高的季节</div>
+    <div id="dests"></div>
+  </div>
+  <div class="sec">
+    <h2>🧭 活跃领队 TOP 15</h2>
+    <div class="desc">按发起活动数量排行，标签为其最常带的类型</div>
+    <div id="leaders"></div>
+  </div>
+  <div class="sec">
+    <h2>🔥 报名热度</h2>
+    <div class="desc">各类活动平均报名人数（抓取时刻快照，仅看相对热度）</div>
+    <div id="signupavg"></div>
+    <h2 style="margin-top:16px">报名最多的 10 个活动</h2>
+    <div id="topsignup"></div>
+  </div>
+  <div class="foot" id="foot"></div>
+</div>
+<a class="back" href="/">‹ 回活动查询</a>
+<script>
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MON=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+function bars(el, items, color){
+  const max=Math.max(...items.map(i=>i[1]),1);
+  el.innerHTML=items.map(([k,v])=>'<div class="bar"><div class="lbl"><span>'+esc(k)+'</span><b>'+v+'</b></div><div class="track"><div class="fill" style="width:'+(v/max*100).toFixed(1)+'%"></div></div></div>').join('');
+}
+fetch('stats-data.json').then(r=>r.json()).then(d=>{
+  $('meta').innerHTML='共分析 '+d.meta.analyzed+' 条活动 · '+d.meta.generated_at+' 更新 · <a href="/">‹ 回查询</a>';
+  // 每月玩什么
+  const pills=$('mpills'), mc=$('monthcat');
+  const curMon=String(new Date().getMonth()+1).padStart(2,'0');
+  MON.forEach((label,i)=>{
+    const m=String(i+1).padStart(2,'0');
+    const s=document.createElement('span');
+    s.className='mpill'+(m===curMon?' on':'');s.textContent=label;
+    s.onclick=()=>{pills.querySelectorAll('.mpill').forEach(x=>x.classList.remove('on'));s.classList.add('on');showMonth(m);};
+    pills.appendChild(s);
+  });
+  function showMonth(m){
+    const c=d.month_category[m]||{};
+    const items=Object.entries(c).filter(([k])=>k!=='其他').sort((a,b)=>b[1]-a[1]);
+    bars(mc,items);
+  }
+  showMonth(curMon);
+  // 趋势
+  const tr=$('trend'), tmax=Math.max(...d.monthly_trend.map(x=>x.n),1);
+  tr.innerHTML=d.monthly_trend.map(x=>'<div class="col" title="'+x.m+': '+x.n+'"><div class="v" style="height:'+(x.n/tmax*100).toFixed(1)+'%"></div><div class="t">'+x.m.slice(2)+'</div></div>').join('');
+  const y=d.yoy.find(x=>x.m===curMon);
+  if(y)$('yoy').textContent='本月对比：2025 年 '+y.y2025+' 条 vs 2026 年 '+y.y2026+' 条（2026 年 10 月数据截至统计日）';
+  // 目的地
+  $('dests').innerHTML=d.destinations.map((x,i)=>{
+    const se=Object.entries(x.seasons).sort((a,b)=>b[1]-a[1])[0];
+    return '<div class="rank"><div class="no'+(i<3?' top':'')+'">'+(i+1)+'</div><div class="nm">'+esc(x.name)+'<div class="seasons">旺季：'+(se?se[0]+'季':'-')+'</div></div><div class="n">'+x.n+'</div></div>';
+  }).join('');
+  // 领队
+  $('leaders').innerHTML=d.leaders.map((x,i)=>'<div class="rank"><div class="no'+(i<3?' top':'')+'">'+(i+1)+'</div><div class="nm">'+esc(x.name)+(x.top_cat?'<span class="tagchip">'+esc(x.top_cat)+'</span>':'')+'</div><div class="ct">发起</div><div class="n">'+x.n+'</div></div>').join('');
+  // 报名热度
+  const sa=Object.entries(d.category_signup_avg).filter(([k])=>k!=='其他').sort((a,b)=>b[1]-a[1]);
+  bars($('signupavg'),sa);
+  $('topsignup').innerHTML=d.top_signup.map((x,i)=>'<div class="rank"><div class="no'+(i<3?' top':'')+'">'+(i+1)+'</div><div class="nm">'+esc(x.title)+'<div class="seasons">'+esc(x.date)+' · '+esc(x.leader||'-')+'</div></div><div class="n">'+x.n+'人</div></div>').join('');
+  $('foot').textContent='数据范围 2025-01 ~ 2026-10 · '+d.meta.note;
+}).catch(e=>{$('meta').textContent='统计数据加载失败';});
+function $(id){return document.getElementById(id);}
+</script>
+</body>
+</html>
