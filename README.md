@@ -5,7 +5,9 @@
 ## 结构
 
 - `web/bulu-web.html` — 移动端查询页（https://2bulu.168939.xyz），直调接口 Worker 拿实时数据
+- `web/stats.html` + `web/stats-data.json` — 数据统计页（https://2bulu.168939.xyz/stats）：每月玩什么、活动趋势、热门目的地、活跃领队、报名热度
 - `workers/bulu-worker.js` — 数据接口 Worker（https://2bulu-api.168939.xyz），从 D1 `2bulu-activities` 查数据
+- `analysis/analyze.py` — 统计分析脚本（复用抓取管线的 tagger.py 分类规则），生成 `web/stats-data.json`
 - `deploy.py` — 一键发布脚本
 - `.github/workflows/deploy.yml` — push 到 main 自动发布
 
