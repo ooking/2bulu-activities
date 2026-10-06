@@ -57,7 +57,6 @@ header a{color:#fff}
     <h2>📈 活动量趋势</h2>
     <div class="desc">2025 年 1 月以来每月出发的活动数</div>
     <div class="trend" id="trend"></div>
-    <div class="desc" id="yoy" style="margin:10px 0 0"></div>
   </div>
   <div class="sec">
     <h2>📍 热门目的地 TOP 20</h2>
@@ -107,8 +106,6 @@ fetch('stats-data.json').then(r=>r.json()).then(d=>{
   // 趋势
   const tr=$('trend'), tmax=Math.max(...d.monthly_trend.map(x=>x.n),1);
   tr.innerHTML=d.monthly_trend.map(x=>'<div class="col" title="'+x.m+': '+x.n+'"><div class="v" style="height:'+(x.n/tmax*100).toFixed(1)+'%"></div><div class="t">'+x.m.slice(2)+'</div></div>').join('');
-  const y=d.yoy.find(x=>x.m===curMon);
-  if(y)$('yoy').textContent='本月对比：2025 年 '+y.y2025+' 条 vs 2026 年 '+y.y2026+' 条（2026 年 10 月数据截至统计日）';
   // 目的地
   $('dests').innerHTML=d.destinations.map((x,i)=>{
     const se=Object.entries(x.seasons).sort((a,b)=>b[1]-a[1])[0];
